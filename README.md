@@ -1,0 +1,1 @@
+This repo contains the basic 3d primitive classes used in both physics and graphics of the geodesy engine.
