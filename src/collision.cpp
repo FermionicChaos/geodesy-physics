@@ -1,4 +1,4 @@
-#include <geodesy/core/phys/collision.h>
+#include <geodesy/phys/collision.h>
 
 namespace geodesy::phys {
     

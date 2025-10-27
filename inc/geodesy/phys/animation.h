@@ -1,13 +1,13 @@
 #pragma once
-#ifndef GEODESY_CORE_PHYS_ANIMATION_H
-#define GEODESY_CORE_PHYS_ANIMATION_H
+#ifndef GEODESY_PHYS_ANIMATION_H
+#define GEODESY_PHYS_ANIMATION_H
 
 #include <string>
 #include <vector>
 #include <map>
 
-#include "../../config.h"
-#include "../math.h"
+// #include "../../config.h"
+#include <geodesy/math.h>
 
 // #include "mesh.h"
 // #include "model.h"
@@ -74,4 +74,4 @@ namespace geodesy::phys {
 
 }
 
-#endif // !GEODESY_CORE_PHYS_ANIMATION_H
+#endif // !GEODESY_PHYS_ANIMATION_H

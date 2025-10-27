@@ -1,11 +1,13 @@
 #pragma once
-#ifndef GEODESY_CORE_PHYS_NODE_H
-#define GEODESY_CORE_PHYS_NODE_H
+#ifndef GEODESY_PHYS_NODE_H
+#define GEODESY_PHYS_NODE_H
+
+#include <memory>
 
 // Include include config.
-#include "../../config.h"
+// #include "../../config.h"
 // Include include math.
-#include "../math.h"
+#include <geodesy/math.h>
 // Include physics mesh. (Needed for collisions)
 #include "mesh.h"
 // Include animation.
@@ -101,4 +103,4 @@ namespace geodesy::phys {
 	
 }
 
-#endif // !GEODESY_CORE_PHYS_NODE_H
+#endif // !GEODESY_PHYS_NODE_H

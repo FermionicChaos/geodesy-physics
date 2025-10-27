@@ -1,10 +1,8 @@
-#include <geodesy/core/phys/animation.h>
+#include <geodesy/phys/animation.h>
 
 #include <string>
 #include <vector>
 #include <map>
-
-#include <geodesy/core/math.h>
 
 // Model Loading
 #include <assimp/Importer.hpp>

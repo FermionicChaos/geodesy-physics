@@ -1,6 +1,6 @@
 #pragma once
-#ifndef GEODESY_CORE_PHYS_COLLISION_H
-#define GEODESY_CORE_PHYS_COLLISION_H
+#ifndef GEODESY_PHYS_COLLISION_H
+#define GEODESY_PHYS_COLLISION_H
 
 namespace geodesy::phys {
 
@@ -12,4 +12,4 @@ namespace geodesy::phys {
 
 } // namespace geodesy::phys
 
-#endif // !GEODESY_CORE_PHYS_COLLISION_H
+#endif // !GEODESY_PHYS_COLLISION_H

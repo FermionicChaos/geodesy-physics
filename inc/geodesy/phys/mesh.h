@@ -1,9 +1,9 @@
 #pragma once
-#ifndef GEODESY_CORE_PHYS_MESH_H
-#define GEODESY_CORE_PHYS_MESH_H
+#ifndef GEODESY_PHYS_MESH_H
+#define GEODESY_PHYS_MESH_H
 
-#include "../../config.h"
-#include "../math.h"
+// #include "../../config.h"
+#include <geodesy/math.h>
 
 namespace geodesy::phys {
 
@@ -75,4 +75,4 @@ namespace geodesy::phys {
 
 }
 
-#endif // !GEODESY_CORE_PHYS_COLLIDER_H
+#endif // !GEODESY_PHYS_COLLIDER_H

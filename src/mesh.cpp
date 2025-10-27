@@ -1,4 +1,4 @@
-#include <geodesy/core/phys/mesh.h>
+#include <geodesy/phys/mesh.h>
 
 namespace geodesy::phys {
 

@@ -1,4 +1,4 @@
-#include <geodesy/core/phys/force.h>
+#include <geodesy/phys/force.h>
 
 namespace geodesy::phys {
 	

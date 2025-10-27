@@ -1,11 +1,11 @@
 #pragma once
-#ifndef GEODESY_CORE_PHYS_FORCE_H
-#define GEODESY_CORE_PHYS_FORCE_H
+#ifndef GEODESY_PHYS_FORCE_H
+#define GEODESY_PHYS_FORCE_H
 
 // Include include config.
-#include "../../config.h"
+// #include "../../config.h"
 // Include include math.
-#include "../math.h"
+#include <geodesy/math.h>
 
 namespace geodesy::phys {
 
@@ -16,4 +16,4 @@ namespace geodesy::phys {
 
 }
 
-#endif // !GEODESY_CORE_PHYS_FORCE_H
+#endif // !GEODESY_PHYS_FORCE_H
