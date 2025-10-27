@@ -46,7 +46,7 @@ include(FetchContent)
 fetch_dependency(https://github.com/assimp/assimp.git v5.4.3 assimp BUILD_SHARED_LIBS=OFF ASSIMP_INSTALL=OFF ASSIMP_INSTALL_PDB=OFF ASSIMP_BUILD_TESTS=OFF)
 fetch_dependency(https://github.com/FermionicChaos/geodesy-math.git master geodesy-math)
 
-set(PROJECT_NAME "geodesy-phys")
+set(PROJECT_NAME "geodesy-physics")
 
 file(GLOB_RECURSE INC
     "inc/*.h"
@@ -68,3 +68,4 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_BINARY_DIR}/_deps/assi
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/dep/geodesy-math/inc/)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC assimp)
+target_link_libraries(${PROJECT_NAME} PUBLIC geodesy-math)
