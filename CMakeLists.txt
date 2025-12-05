@@ -2,9 +2,12 @@ cmake_minimum_required(VERSION 3.20)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(PROJECT_NAME "geodesy-physics")
+
+include(FetchContent)
 
 # Utility function for fetching dependencies in one line.
-function(fetch_dependency AGIT_REPO AGIT_TAG ANAME)
+function(fetch_dependency ADEP_NAME AGIT_REPO AGIT_TAG)
     # Remaining args are variable=value pairs for cache options
     set(options)
     set(oneValueArgs)
@@ -13,10 +16,10 @@ function(fetch_dependency AGIT_REPO AGIT_TAG ANAME)
 
     # Declare the dependency
     FetchContent_Declare(
-        ${ANAME}
+        ${ADEP_NAME}
         GIT_REPOSITORY ${AGIT_REPO}
         GIT_TAG        ${AGIT_TAG}
-        SOURCE_DIR     ${CMAKE_SOURCE_DIR}/dep/${ANAME}
+        SOURCE_DIR     ${CMAKE_SOURCE_DIR}/dep/${ADEP_NAME}
     )
     
     # Apply cache variables with intelligent type detection and FORCE override
@@ -29,24 +32,20 @@ function(fetch_dependency AGIT_REPO AGIT_TAG ANAME)
         # Determine the appropriate cache variable type based on value
         if(val MATCHES "^(ON|OFF|TRUE|FALSE)$")
             # Boolean values
-            set(${key} ${val} CACHE BOOL "Forced by fetch_dependency for ${ANAME}" FORCE)
+            set(${key} ${val} CACHE BOOL "Forced by fetch_dependency for ${ADEP_NAME}" FORCE)
         else()
             # Everything else as STRING
-            set(${key} ${val} CACHE STRING "Forced by fetch_dependency for ${ANAME}" FORCE)
+            set(${key} ${val} CACHE STRING "Forced by fetch_dependency for ${ADEP_NAME}" FORCE)
         endif()
     endforeach()
     
     # Actually fetch it - cache variables should now be available to subdirectory
-    FetchContent_MakeAvailable(${ANAME})
+    FetchContent_MakeAvailable(${ADEP_NAME})
 endfunction()
 
-include(FetchContent)
-
 # Fetch Dependencies
-fetch_dependency(https://github.com/assimp/assimp.git v5.4.3 assimp BUILD_SHARED_LIBS=OFF ASSIMP_INSTALL=OFF ASSIMP_INSTALL_PDB=OFF ASSIMP_BUILD_TESTS=OFF)
-fetch_dependency(https://github.com/FermionicChaos/geodesy-math.git master geodesy-math)
-
-set(PROJECT_NAME "geodesy-physics")
+fetch_dependency(assimp https://github.com/assimp/assimp.git v5.4.3 BUILD_SHARED_LIBS=OFF ASSIMP_INSTALL=OFF ASSIMP_INSTALL_PDB=OFF ASSIMP_BUILD_TESTS=OFF)
+fetch_dependency(geodesy-math https://github.com/FermionicChaos/geodesy-math.git master)
 
 file(GLOB_RECURSE INC
     "inc/*.h"
