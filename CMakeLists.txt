@@ -67,4 +67,4 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_BINARY_DIR}/_deps/assi
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/dep/geodesy-math/inc/)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC assimp)
-target_link_libraries(${PROJECT_NAME} PUBLIC geodesy-math)
+# target_link_libraries(${PROJECT_NAME} INTERFACE geodesy-math)
