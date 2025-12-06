@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 
+# Set CMake policies to avoid warnings from dependencies
+if(POLICY CMP0175)
+    cmake_policy(SET CMP0175 OLD)  # Use old behavior for add_custom_command
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(PROJECT_NAME "geodesy-physics")
