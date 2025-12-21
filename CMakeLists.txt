@@ -46,6 +46,7 @@ endfunction()
 # Fetch Dependencies
 fetch_dependency(assimp https://github.com/assimp/assimp.git v5.4.3 BUILD_SHARED_LIBS=OFF ASSIMP_INSTALL=OFF ASSIMP_INSTALL_PDB=OFF ASSIMP_BUILD_TESTS=OFF)
 fetch_dependency(jolt https://github.com/jrouwe/JoltPhysics.git v5.4.0)
+add_subdirectory(${CMAKE_SOURCE_DIR}/dep/jolt/Build ${CMAKE_BINARY_DIR}/jolt-build)
 fetch_dependency(geodesy-math https://github.com/FermionicChaos/geodesy-math.git master)
 
 file(GLOB_RECURSE INC
@@ -69,5 +70,4 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/dep/jolt/i
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/dep/geodesy-math/inc/)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC assimp)
-target_link_libraries(${PROJECT_NAME} PUBLIC jolt)
-# target_link_libraries(${PROJECT_NAME} INTERFACE geodesy-math)
+target_link_libraries(${PROJECT_NAME} PUBLIC Jolt)
