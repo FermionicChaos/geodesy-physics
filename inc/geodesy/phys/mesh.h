@@ -2,22 +2,26 @@
 #ifndef GEODESY_PHYS_MESH_H
 #define GEODESY_PHYS_MESH_H
 
-// #include "../../config.h"
+#include <memory>
+
 #include <geodesy/math.h>
+
+// Jolt Physics API
+#include <Jolt/Jolt.h>
 
 namespace geodesy::phys {
 
     class mesh {
 	public:
 
-			// Informs how vertex groups are to be interpreted.
+		// Informs how vertex groups are to be interpreted.
 		enum primitive {
-			POINT			,
-			LINE			,
-			LINE_STRIP		,
-			TRIANGLE		,
-			TRIANGLE_STRIP	,
-			TRIANGLE_FAN	,
+			POINT,
+			LINE,
+			LINE_STRIP,
+			TRIANGLE,
+			TRIANGLE_STRIP,
+			TRIANGLE_FAN,
 		};
 
 		struct vertex {
@@ -67,12 +71,22 @@ namespace geodesy::phys {
 		vertex operator[](size_t aIndex) const;
 		vertex& operator[](size_t aIndex);
 
-		// Calculates various properties of the mesh.
+		// Calculates the center of mass of the mesh based on vertex positions.
 		math::vec<float, 3> center_of_mass() const;
+
+		// Calculates the bounding radius of the mesh based on vertex positions.
 		math::vec<float, 3> bounding_radius() const;
+
+		// ! Untested
+		// Separates disconnected parts of the mesh into individual meshes. Outputs a vector of pairs containing
+		// position vector of the split mesh with respect to the original mesh's origin along with the new mesh.
+		std::vector<std::pair<math::vec<float, 3>, std::shared_ptr<phys::mesh>>> split_disconnected_meshes() const;
+
+		// Calculate lower LOD of mesh.
+		//std::shared_ptr<phys::mesh> generate_lod(float aReductionFactor) const;
 
 	};
 
 }
 
-#endif // !GEODESY_PHYS_COLLIDER_H
+#endif // !GEODESY_PHYS_MESH_H
