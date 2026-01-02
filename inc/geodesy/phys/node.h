@@ -45,24 +45,24 @@ namespace geodesy::phys {
 		};
 		
 		// Node traversal/hierarchy data.
-		node*                   				Root;       		// Root node in hierarchy
-		node*                   				Parent;     		// Parent node in hierarchy
-		std::vector<node*> 						Child;      		// Child nodes in hierarchy
+		node*                   						Root;       		// Root node in hierarchy
+		node*                   						Parent;     		// Parent node in hierarchy
+		std::vector<node*> 								Child;      		// Child nodes in hierarchy
 		
 		// Node Data
-		std::string             				Identifier; 		// Node identifier
-		int 									Type;       		// Node type
-		float									Mass;				// Kilogram			[kg]
-		math::mat<float, 3, 3>					InertiaTensor;		// Inertia Tensor	[kg*m^2]
-		math::vec<float, 3>						Position;			// Meter			[m]
-		math::quaternion<float>					Orientation;		// Quaternion		[Dimensionless]
-		math::vec<float, 3> 					Scale;				// Scaling Factor	[Dimensionless]
-		math::mat<float, 4, 4> 					DefaultTransform; 	// Node transformation matrix
-		math::mat<float, 4, 4> 					CurrentTransform;   // Final Node Transform each frame after physics and animation
-		math::mat<float, 4, 4> 					GlobalTransform;    // Node Transform to World Space.
-		math::vec<float, 3>						LinearMomentum;		// Linear Momentum	[kg*m/s]
-		math::vec<float, 3>						AngularMomentum;	// Angular Momentum [kg*m/s]
-		std::shared_ptr<phys::mesh>				CollisionMesh;		// Mesh Data
+		std::string             						Identifier; 		// Node identifier
+		int 											Type;       		// Node type
+		float											Mass;				// Kilogram			[kg]
+		math::mat<float, 3, 3>							InertiaTensor;		// Inertia Tensor	[kg*m^2]
+		math::vec<float, 3>								Position;			// Meter			[m]
+		math::quaternion<float>							Orientation;		// Quaternion		[Dimensionless]
+		math::vec<float, 3> 							Scale;				// Scaling Factor	[Dimensionless]
+		math::mat<float, 4, 4> 							DefaultTransform; 	// Node transformation matrix
+		math::mat<float, 4, 4> 							CurrentTransform;   // Final Node Transform each frame after physics and animation
+		math::mat<float, 4, 4> 							GlobalTransform;    // Node Transform to World Space.
+		math::vec<float, 3>								LinearMomentum;		// Linear Momentum	[kg*m/s]
+		math::vec<float, 3>								AngularMomentum;	// Angular Momentum [kg*m/s]
+		std::vector<std::shared_ptr<phys::mesh>>		CollisionMeshs;		// Mesh Data
 		
 		node();
 		~node();

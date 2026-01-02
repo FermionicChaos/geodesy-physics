@@ -111,7 +111,7 @@ namespace geodesy::phys {
 		this->DefaultTransform = aNode->DefaultTransform;
 		this->CurrentTransform = aNode->CurrentTransform; // Copy the current transform.
 		this->GlobalTransform = aNode->GlobalTransform; // Copy the global transform.
-		this->CollisionMesh = aNode->CollisionMesh; // Copy the collision mesh if it exists.
+		this->CollisionMeshs = aNode->CollisionMeshs; // Copy the collision mesh if it exists.
 	}
 
 	void node::copy(const node* aNode) {}
