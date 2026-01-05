@@ -8,6 +8,32 @@
 
 // Jolt Physics API
 #include <Jolt/Jolt.h>
+#include <Jolt/Core/Factory.h>
+#include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Core/JobSystemThreadPool.h>
+#include <Jolt/Core/JobSystemSingleThreaded.h>
+#include <Jolt/Core/JobSystem.h>
+#include <Jolt/Core/Profiler.h>
+#include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/PhysicsSettings.h>
+#include <Jolt/Physics/PhysicsStepListener.h>
+#include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Body/BodyID.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Body/MotionType.h>
+#include <Jolt/Physics/Body/BodyInterface.h>
+#include <Jolt/Physics/Collision/Shape/Shape.h>
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
+#include <Jolt/Physics/Collision/ObjectLayer.h>
+#include <Jolt/Physics/Constraints/Constraint.h>
+#include <Jolt/Physics/Constraints/HingeConstraint.h>
+#include <Jolt/Physics/Constraints/FixedConstraint.h>
+#include <Jolt/Physics/Constraints/PointConstraint.h>
 
 namespace geodesy::phys {
 
@@ -124,7 +150,7 @@ namespace geodesy::phys {
 		std::string 					Name;
 		float 							Mass;
 		math::vec<float, 3> 			CenterOfMass;
-		math::vec<float, 3> 			BoundingRadius;
+		float 							BoundingRadius;
 		std::vector<vertex> 			Vertex;
 		topology 						Topology;
 
@@ -134,10 +160,13 @@ namespace geodesy::phys {
 		vertex& operator[](size_t aIndex);
 
 		// Calculates the center of mass of the mesh based on vertex positions.
-		math::vec<float, 3> center_of_mass() const;
+		math::vec<float, 3> calculate_center_of_mass() const;
 
 		// Calculates the bounding radius of the mesh based on vertex positions.
-		math::vec<float, 3> bounding_radius() const;
+		float calculate_bounding_radius() const;
+
+		// Calculate the inertia tensor of the mesh assuming uniform density.
+		math::mat<float, 3, 3> calculate_inertia_tensor() const;
 
 		// Separates disconnected parts of the mesh into individual meshes based on topology connectivity.
 		// Returns a vector of mesh objects, one for each connected component.

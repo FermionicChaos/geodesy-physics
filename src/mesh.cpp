@@ -25,7 +25,7 @@ namespace geodesy::phys {
 		this->Name						= "";
 		this->Mass						= 1.0f;
 		this->CenterOfMass 				= { 0.0f, 0.0f, 0.0f };
-		this->BoundingRadius			= { 0.0f, 0.0f, 0.0f };
+		this->BoundingRadius			= 0.0f;
 	}
 
 	mesh::lod_parameters::lod_parameters() {
@@ -64,7 +64,7 @@ namespace geodesy::phys {
 	}
 
 	// Calculates the center of mass of the mesh.
-	math::vec<float, 3> mesh::center_of_mass() const {
+	math::vec<float, 3> mesh::calculate_center_of_mass() const {
 		math::vec<float, 3> COM = math::vec<float, 3>(0.0f, 0.0f, 0.0f);
 		for (const auto& Vertex : this->Vertex) {
 			COM += Vertex.Position;
@@ -74,18 +74,126 @@ namespace geodesy::phys {
 	}
 
 	// Determines the bounding radius of the mesh.
-	math::vec<float, 3> mesh::bounding_radius() const {
+	float mesh::calculate_bounding_radius() const {
 		float MaxRadius = 0.0f;
-		math::vec<float, 3> MaxPosition = { 0.0f, 0.0f, 0.0f };
-		math::vec<float, 3> COM = this->center_of_mass();
+		math::vec<float, 3> COM = this->calculate_center_of_mass();
 		for (const auto& Vertex : this->Vertex) {
 			float Distance = math::length(Vertex.Position - COM);
 			if (Distance > MaxRadius) {
 				MaxRadius = Distance;
-				MaxPosition = Vertex.Position - COM;
 			}
 		}
-		return MaxPosition;
+		return MaxRadius;
+	}
+
+	// Calculate the inertia tensor of the mesh assuming uniform density.
+	// Uses volume integration over tetrahedra formed with origin.
+	// Based on: "Computing the Moment of Inertia of a Solid Defined by a Triangle Mesh"
+	// by Jonathan Blow, 2004
+	math::mat<float, 3, 3> mesh::calculate_inertia_tensor() const {
+		if (this->Vertex.empty() || (this->Topology.Data16.empty() && this->Topology.Data32.empty())) {
+			// Return identity matrix scaled by mass if no geometry
+			return math::mat<float, 3, 3>(
+				this->Mass, 0.0f, 0.0f,
+				0.0f, this->Mass, 0.0f,
+				0.0f, 0.0f, this->Mass
+			);
+		}
+
+		// Only works with triangle topology
+		if (this->Topology.Primitive != primitive::TRIANGLE) {
+			// Return identity for non-triangle meshes
+			return math::mat<float, 3, 3>(
+				this->Mass, 0.0f, 0.0f,
+				0.0f, this->Mass, 0.0f,
+				0.0f, 0.0f, this->Mass
+			);
+		}
+
+		const bool Use32Bit = !this->Topology.Data32.empty();
+		const size_t IndexCount = Use32Bit ? this->Topology.Data32.size() : this->Topology.Data16.size();
+		
+		if (IndexCount % 3 != 0) {
+			// Invalid triangle list
+			return math::mat<float, 3, 3>(
+				this->Mass, 0.0f, 0.0f,
+				0.0f, this->Mass, 0.0f,
+				0.0f, 0.0f, this->Mass
+			);
+		}
+
+		// Canonical inertia tensor integrals for a tetrahedron
+		const float a = 1.0f / 60.0f;
+		const float b = 1.0f / 120.0f;
+
+		// Accumulate volume and inertia contributions from each tetrahedron
+		float Volume = 0.0f;
+		math::mat<float, 3, 3> InertiaTensor = {
+			0.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 0.0f
+		};
+
+		for (size_t i = 0; i < IndexCount; i += 3) {
+			// Get triangle vertices
+			uint i0 = Use32Bit ? this->Topology.Data32[i] : this->Topology.Data16[i];
+			uint i1 = Use32Bit ? this->Topology.Data32[i + 1] : this->Topology.Data16[i + 1];
+			uint i2 = Use32Bit ? this->Topology.Data32[i + 2] : this->Topology.Data16[i + 2];
+
+			const math::vec<float, 3>& v0 = this->Vertex[i0].Position;
+			const math::vec<float, 3>& v1 = this->Vertex[i1].Position;
+			const math::vec<float, 3>& v2 = this->Vertex[i2].Position;
+
+			// Signed volume of tetrahedron formed by origin and triangle
+			float det = v0[0] * (v1[1] * v2[2] - v1[2] * v2[1])
+					  - v0[1] * (v1[0] * v2[2] - v1[2] * v2[0])
+					  + v0[2] * (v1[0] * v2[1] - v1[1] * v2[0]);
+			
+			float tetVolume = det / 6.0f;
+			Volume += tetVolume;
+
+			// Accumulate inertia tensor contribution from this tetrahedron
+			// Using canonical tetrahedron integration formulas
+			for (int j = 0; j < 3; ++j) {
+				for (int k = 0; k < 3; ++k) {
+					if (j == k) {
+						// Diagonal: I_xx = integral(y^2 + z^2), I_yy = integral(x^2 + z^2), I_zz = integral(x^2 + y^2)
+						float sum = 0.0f;
+						for (int n = 0; n < 3; ++n) {
+							if (n != j) {
+								sum += a * (v0[n] * v0[n] + v1[n] * v1[n] + v2[n] * v2[n])
+									 + b * (v0[n] * v1[n] + v0[n] * v2[n] + v1[n] * v2[n]);
+							}
+						}
+						InertiaTensor(j, k) += tetVolume * sum;
+					} else {
+						// Off-diagonal: I_xy = -integral(x*y), etc.
+						float sum = a * (v0[j] * v0[k] + v1[j] * v1[k] + v2[j] * v2[k])
+								  + b * (v0[j] * v1[k] + v0[j] * v2[k] + v0[k] * v1[j]
+									   + v0[k] * v2[j] + v1[j] * v2[k] + v1[k] * v2[j]);
+						InertiaTensor(j, k) -= tetVolume * sum;
+					}
+				}
+			}
+		}
+
+		// Handle zero or negative volume (open mesh or inverted normals)
+		if (Volume <= 0.0f) {
+			// Fallback to diagonal inertia based on bounding sphere
+			float R = this->calculate_bounding_radius();
+			float I = 0.4f * this->Mass * R * R; // Sphere approximation
+			return math::mat<float, 3, 3>(
+				I, 0.0f, 0.0f,
+				0.0f, I, 0.0f,
+				0.0f, 0.0f, I
+			);
+		}
+
+		// Scale by mass (assumes uniform density = mass / volume)
+		float density = this->Mass / Volume;
+		InertiaTensor = InertiaTensor * density;
+
+		return InertiaTensor;
 	}
 
 	std::vector<std::shared_ptr<phys::mesh>> mesh::split_disconnected_meshes() const {
@@ -243,8 +351,8 @@ namespace geodesy::phys {
 
 			// Calculate properties
 			NewMesh->Name = this->Name + "_part" + std::to_string(ComponentIdx);
-			NewMesh->CenterOfMass = NewMesh->center_of_mass();
-			NewMesh->BoundingRadius = NewMesh->bounding_radius();
+			NewMesh->CenterOfMass = NewMesh->calculate_center_of_mass();
+			NewMesh->BoundingRadius = NewMesh->calculate_bounding_radius();
 			NewMesh->Mass = this->Mass * (static_cast<float>(Component.size()) / static_cast<float>(this->Vertex.size()));
 
 			SeparatedMeshes.push_back(NewMesh);
@@ -653,8 +761,8 @@ namespace geodesy::phys {
 
 		// Update mesh properties
 		ResultMesh->Name = this->Name + "_lod";
-		ResultMesh->CenterOfMass = ResultMesh->center_of_mass();
-		ResultMesh->BoundingRadius = ResultMesh->bounding_radius();
+		ResultMesh->CenterOfMass = ResultMesh->calculate_center_of_mass();
+		ResultMesh->BoundingRadius = ResultMesh->calculate_bounding_radius();
 
 		return ResultMesh;
 	}
@@ -1011,8 +1119,8 @@ namespace geodesy::phys {
 
 		// Calculate mesh properties
 		resultMesh->Mass = this->Mass;
-		resultMesh->CenterOfMass = resultMesh->center_of_mass();
-		resultMesh->BoundingRadius = resultMesh->bounding_radius();
+		resultMesh->CenterOfMass = resultMesh->calculate_center_of_mass();
+		resultMesh->BoundingRadius = resultMesh->calculate_bounding_radius();
 
 		return resultMesh;
 	}
