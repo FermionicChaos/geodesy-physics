@@ -83,81 +83,6 @@ namespace geodesy::phys {
 	class node {
 	public:
 
-		// Node Types to identify runtime node.
-		enum type : int {
-			PHYSICS,
-			GRAPHICS,
-			OBJECT,
-		};
-
-		// Constraint types that can connect this node to its parent
-		enum constraint_type : int {
-			NONE,					// No constraint - completely free body (detached from parent hierarchy)
-			FIXED,					// Rigidly welded to parent (no relative motion)
-			POINT,					// Ball-and-socket joint (3 rotation DOF, 0 translation DOF)
-			HINGE,					// Door hinge (1 rotation DOF around axis, 0 translation DOF)
-			SLIDER,					// Piston/rail (1 translation DOF along axis, 0 rotation DOF)
-			CONE,					// Cone constraint (swing limited, twist free)
-			SWING_TWIST,			// Ragdoll joint (swing and twist limits)
-			DISTANCE,				// Maintains fixed distance between two points
-			SIX_DOF,				// Six degree of freedom constraint (configurable limits on all axes)
-		};
-
-		// Describes how this node is constrained to its parent
-		struct constraint_descriptor {
-			constraint_type Type;
-			
-			// Attachment points (relative to each body's center of mass)
-			math::vec<float, 3> AttachmentPoint1;  // On parent
-			math::vec<float, 3> AttachmentPoint2;  // On this node
-			
-			// Axes for directional constraints (Hinge, Slider, Cone)
-			math::vec<float, 3> PrimaryAxis1;      // Parent's primary axis (hinge axis, slider direction)
-			math::vec<float, 3> PrimaryAxis2;      // Child's primary axis
-			math::vec<float, 3> NormalAxis1;       // Parent's normal axis (for angle reference)
-			math::vec<float, 3> NormalAxis2;       // Child's normal axis
-			
-			// Limits for constrained motion
-			float LimitMin;							// Minimum angle (rad) or distance (m)
-			float LimitMax;							// Maximum angle (rad) or distance (m)
-			bool  LimitsEnabled;					// Whether to enforce limits
-			
-			// Spring settings for soft limits
-			bool  UseSoftLimits;					// Use spring-based soft limits instead of hard limits
-			float SpringFrequency;					// Spring frequency (Hz) when limits are exceeded
-			float SpringDamping;						// Spring damping ratio (0 = no damping, 1 = critical damping)
-			
-			// Motor/actuation settings
-			bool  MotorEnabled;						// Enable motor to drive the constraint
-			float MotorTargetVelocity;				// Target velocity for velocity motor (rad/s or m/s)
-			float MotorTargetPosition;				// Target position for position motor (rad or m)
-			float MotorMaxForce;					// Maximum force/torque the motor can apply (N or N·m)
-			
-			// Friction
-			float MaxFrictionForce;					// Maximum friction force/torque when not motorized (N or N·m)
-			
-			// Six DOF specific settings (which axes are free/limited)
-			struct six_dof_settings {
-				bool TranslationFree[3];			// X, Y, Z translation freedom
-				bool RotationFree[3];				// X, Y, Z rotation freedom
-				float TranslationMin[3];			// Min translation limits
-				float TranslationMax[3];			// Max translation limits
-				float RotationMin[3];				// Min rotation limits (rad)
-				float RotationMax[3];				// Max rotation limits (rad)
-			};
-			six_dof_settings SixDOF;
-			
-			// Distance constraint specific
-			float MinDistance;						// Minimum distance to maintain
-			float MaxDistance;						// Maximum distance to maintain
-			
-			// Cone constraint specific
-			float MaxConeAngle;						// Maximum cone half-angle (rad)
-			float MaxTwistAngle;					// Maximum twist angle (rad)
-			
-			constraint_descriptor();
-		};
-
 		// Fixed-function primitive shapes (alternative to convex hull from PhysicsMesh)
 		struct shape_sphere {
 			float Radius;
@@ -184,9 +109,7 @@ namespace geodesy::phys {
 
 		// Node Data
 		std::string             						Identifier; 					// Node identifier
-		int 											Type;       					// Node type
 		JPH::EMotionType 								Motion; 						// Determines how this node moves in world space (Static/Kinematic/Dynamic)
-		constraint_descriptor 							ParentConstraint;				// Describes how this node is constrained to its parent
 		bool 											CollisionEnabled;				// Is collision detection enabled for this node.
 
 		// Physics Data
@@ -211,7 +134,6 @@ namespace geodesy::phys {
 		std::variant<std::monostate, shape_sphere, shape_box, shape_cylinder, shape_capsule, shape_convex_hull> ShapeOverride;
 		
 		JPH::BodyID 									JoltBodyID;						// Jolt physics body ID (links node to physics simulation)
-		JPH::Constraint* 								JoltConstraint;					// Jolt constraint connecting this node to parent
 		
 		node();
 		~node();

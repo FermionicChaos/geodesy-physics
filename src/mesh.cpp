@@ -21,7 +21,16 @@ namespace geodesy::phys {
 		this->Color						= math::vec<float, 4>(0.0f, 0.0f, 0.0f, 0.0f);
 	}
 
+	mesh::shape_parameters::shape_parameters() {
+		// Initialize all to zero - specific shape will set relevant fields
+		Box.HalfExtentX = 0.0f;
+		Box.HalfExtentY = 0.0f;
+		Box.HalfExtentZ = 0.0f;
+	}
+
 	mesh::mesh() {
+		this->Type						= shape_type::VERTEX_DATA;
+		this->Parameters				= shape_parameters();
 		this->Name						= "";
 		this->Mass						= 1.0f;
 		this->CenterOfMass 				= { 0.0f, 0.0f, 0.0f };

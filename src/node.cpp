@@ -60,48 +60,11 @@ namespace geodesy::phys {
 		return true;
 	}
 
-	// ===== Constraint Descriptor Constructor ===== //
-
-	node::constraint_descriptor::constraint_descriptor() {
-		Type = constraint_type::NONE;
-		AttachmentPoint1 = { 0.0f, 0.0f, 0.0f };
-		AttachmentPoint2 = { 0.0f, 0.0f, 0.0f };
-		PrimaryAxis1 = { 0.0f, 1.0f, 0.0f };
-		PrimaryAxis2 = { 0.0f, 1.0f, 0.0f };
-		NormalAxis1 = { 1.0f, 0.0f, 0.0f };
-		NormalAxis2 = { 1.0f, 0.0f, 0.0f };
-		LimitMin = -static_cast<float>(math::constant::pi);
-		LimitMax = static_cast<float>(math::constant::pi);
-		LimitsEnabled = false;
-		UseSoftLimits = false;
-		SpringFrequency = 2.0f;
-		SpringDamping = 0.1f;
-		MotorEnabled = false;
-		MotorTargetVelocity = 0.0f;
-		MotorTargetPosition = 0.0f;
-		MotorMaxForce = 0.0f;
-		MaxFrictionForce = 0.0f;
-		// Initialize six_dof_settings
-		for (int i = 0; i < 3; i++) {
-			SixDOF.TranslationFree[i] = false;
-			SixDOF.RotationFree[i] = false;
-			SixDOF.TranslationMin[i] = 0.0f;
-			SixDOF.TranslationMax[i] = 0.0f;
-			SixDOF.RotationMin[i] = 0.0f;
-			SixDOF.RotationMax[i] = 0.0f;
-		}
-		MinDistance = 0.0f;
-		MaxDistance = 1.0f;
-		MaxConeAngle = static_cast<float>(math::constant::pi) / 4.0f;
-		MaxTwistAngle = static_cast<float>(math::constant::pi);
-	}
-
 	// ===== Node Implementation ===== //
 
 	// Default constructor, zero out all data.
 	node::node() {
 		this->Identifier 				= "";
-		this->Type 				= node::PHYSICS; // Default type to PHYSICS.
 		this->Root 				= this;
 		this->Parent 			= nullptr;
 		this->Mass 				= 1.0f; // Default mass to 1 kg.
@@ -132,7 +95,6 @@ namespace geodesy::phys {
 		
 		// Initialize Jolt Physics members
 		this->JoltBodyID = JPH::BodyID();
-		this->JoltConstraint = nullptr;
 		this->Motion = JPH::EMotionType::Static; // Default motion type
 		this->CollisionEnabled = true; // Default collision enabled
 		this->PhysicsMesh = nullptr; // No physics mesh by default
@@ -199,7 +161,6 @@ namespace geodesy::phys {
 		// This function simply copies all data not related to the hierarchy.
 		// This is used to copy data from one node to another.
 		this->Identifier = aNode->Identifier;
-		this->Type = aNode->Type;
 		this->Mass = aNode->Mass;
 		this->InertiaTensor = aNode->InertiaTensor;
 		this->Position = aNode->Position;

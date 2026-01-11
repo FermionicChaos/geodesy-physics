@@ -40,6 +40,47 @@ namespace geodesy::phys {
     class mesh {
 	public:
 
+		// Defines the type of collision shape this mesh represents
+		enum class shape_type {
+			VERTEX_DATA,      // Use actual vertex data for convex hull collision
+			BOX,              // Axis-aligned box primitive
+			SPHERE,           // Sphere primitive
+			CYLINDER,         // Cylinder primitive
+			CAPSULE,          // Capsule primitive
+		};
+
+		// Union of parameters for fixed-function shapes
+		// Only relevant when Type != VERTEX_DATA
+		struct shape_parameters {
+			union {
+				// BOX parameters
+				struct {
+					float HalfExtentX;
+					float HalfExtentY;
+					float HalfExtentZ;
+				} Box;
+				
+				// SPHERE parameters
+				struct {
+					float Radius;
+				} Sphere;
+				
+				// CYLINDER parameters
+				struct {
+					float HalfHeight;    // Half-height along Y-axis
+					float Radius;
+				} Cylinder;
+				
+				// CAPSULE parameters
+				struct {
+					float HalfHeight;    // Half-height of cylindrical section
+					float Radius;
+				} Capsule;
+			};
+			
+			shape_parameters();
+		};
+
 		// Informs how vertex groups are to be interpreted.
 		enum primitive {
 			POINT,
@@ -149,6 +190,8 @@ namespace geodesy::phys {
 		// Host Memory Objects
 		std::string 					Name;
 		float 							Mass;
+		shape_type 						Type;
+		shape_parameters 				Parameters;
 		math::vec<float, 3> 			CenterOfMass;
 		float 							BoundingRadius;
 		std::vector<vertex> 			Vertex;
