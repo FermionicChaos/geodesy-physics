@@ -135,9 +135,9 @@ namespace geodesy::phys {
 		std::vector<std::shared_ptr<phys::mesh>>		PhysicsMeshes;		// Mesh Data
 		
 		// Cached Transform Data
-		math::mat<float, 4, 4> 							DefaultTransform; 	// Node transformation matrix
-		math::mat<float, 4, 4> 							CurrentTransform;   // Final Node Transform each frame after physics and animation
-		math::mat<float, 4, 4> 							GlobalTransform;    // Node Transform to World Space.
+		math::mat<float, 4, 4> 							TransformToParentDefault; 	// Node transformation matrix
+		math::mat<float, 4, 4> 							TransformToParentCurrent;   // Final Node Transform each frame after physics and animation
+		math::mat<float, 4, 4> 							TransformToWorld;    // Node Transform to World Space.
 		
 		node();
 		~node();

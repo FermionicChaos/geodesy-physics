@@ -24,14 +24,14 @@ namespace geodesy::phys {
 		this->Scale 			= { 1.0f, 1.0f, 1.0f }; // Default scale to 1 in all dimensions.
 		this->LinearMomentum 	= { 0.0f, 0.0f, 0.0f }; // Default linear momentum to zero.
 		this->AngularMomentum 	= { 0.0f, 0.0f, 0.0f }; // Default angular momentum to zero.
-		this->DefaultTransform 	= {
+		this->TransformToParentDefault 	= {
 			1.0f, 0.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f, 0.0f,
 			0.0f, 0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f
 		};
-		this->CurrentTransform = this->DefaultTransform;
-		this->GlobalTransform = {
+		this->TransformToParentCurrent = this->TransformToParentDefault;
+		this->TransformToWorld = {
 			1.0f, 0.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f, 0.0f,
 			0.0f, 0.0f, 1.0f, 0.0f,
@@ -58,10 +58,10 @@ namespace geodesy::phys {
 	math::mat<float, 4, 4> node::transform() const {
 		// Recursively calculates the world transform for this node using current state of the node hierarchy.
 		if (this->Root != this) {
-			return this->Parent->transform() * this->CurrentTransform;
+			return this->Parent->transform() * this->TransformToParentCurrent;
 		}
 		else {
-			return this->CurrentTransform; // If this is the root node, return the current transform.
+			return this->TransformToParentCurrent; // If this is the root node, return the current transform.
 		}
 	}
 
@@ -108,9 +108,9 @@ namespace geodesy::phys {
 		this->Scale = aNode->Scale;
 		this->LinearMomentum = aNode->LinearMomentum;
 		this->AngularMomentum = aNode->AngularMomentum;
-		this->DefaultTransform = aNode->DefaultTransform;
-		this->CurrentTransform = aNode->CurrentTransform; // Copy the current transform.
-		this->GlobalTransform = aNode->GlobalTransform; // Copy the global transform.
+		this->TransformToParentDefault = aNode->TransformToParentDefault;
+		this->TransformToParentCurrent = aNode->TransformToParentCurrent; // Copy the current transform.
+		this->TransformToWorld = aNode->TransformToWorld; // Copy the global transform.
 		this->PhysicsMeshes = aNode->PhysicsMeshes; // Copy the physics mesh if it exists.
 	}
 
@@ -149,7 +149,7 @@ namespace geodesy::phys {
 		if (!(aPlaybackAnimation.size() > 0 ? aPlaybackAnimation.size() + 1 == aAnimationWeight.size() : false)) return;
 
 		// Bind Pose Transform
-		this->CurrentTransform = (this->DefaultTransform * aAnimationWeight[0]);
+		this->TransformToParentCurrent = (this->TransformToParentDefault * aAnimationWeight[0]);
 
 		// TODO: Figure out how to load animations per node. Also incredibly slow right now. Optimize Later.
 		// Overrides/Averages Animation Transformations with Bind Pose Transform based on weights.
@@ -164,15 +164,15 @@ namespace geodesy::phys {
 				// Ensure TickerTime is within the bounds of the animation.
 				float BoundedTickerTime = std::fmod(TickerTime, aPlaybackAnimation[i].Stop - aPlaybackAnimation[i].Start) + aPlaybackAnimation[i].Start;
 				if (this->Root == this) {
-					this->CurrentTransform += this->DefaultTransform * NodeAnimation[BoundedTickerTime] * Weight;
+					this->TransformToParentCurrent += this->TransformToParentDefault * NodeAnimation[BoundedTickerTime] * Weight;
 				}
 				else {
-					this->CurrentTransform += NodeAnimation[BoundedTickerTime] * Weight;
+					this->TransformToParentCurrent += NodeAnimation[BoundedTickerTime] * Weight;
 				}
 			}
 			else {
 				// Animation Data Does Not Exist, use bind pose animation.
-				this->CurrentTransform += this->DefaultTransform * Weight;
+				this->TransformToParentCurrent += this->TransformToParentDefault * Weight;
 			}
 		}
 	}
