@@ -7,8 +7,65 @@
 #include <limits>
 #include <cmath>
 #include <list>
+#include <iostream>
+#include <cstdarg>
+
+// Jolt Physics registration
+#include <Jolt/RegisterTypes.h>
+
+// Jolt Physics callback implementations
+namespace {
+	// Trace callback for Jolt Physics logging
+	static void TraceImpl(const char* inFMT, ...) {
+		va_list list;
+		va_start(list, inFMT);
+		char buffer[1024];
+		vsnprintf(buffer, sizeof(buffer), inFMT, list);
+		va_end(list);
+		std::cout << "[Jolt Physics] " << buffer << std::endl;
+	}
+
+#ifdef JPH_ENABLE_ASSERTS
+	// Assert callback for Jolt Physics
+	static bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, JPH::uint inLine) {
+		std::cout << "[Jolt Physics Assert] " << inFile << ":" << inLine << ": (" << inExpression << ") " 
+		          << (inMessage != nullptr ? inMessage : "") << std::endl;
+		return true; // Trigger breakpoint
+	}
+#endif // JPH_ENABLE_ASSERTS
+}
 
 namespace geodesy::phys {
+
+	bool initialize() {
+		// Register allocation hook
+		// In this implementation we use malloc/free but this can be overridden
+		JPH::RegisterDefaultAllocator();
+
+		// Install trace and assert callbacks
+		JPH::Trace = TraceImpl;
+		JPH_IF_ENABLE_ASSERTS(JPH::AssertFailed = AssertFailedImpl;)
+
+		// Create factory for deserialization
+		// This is required even if not using serialization
+		JPH::Factory::sInstance = new JPH::Factory();
+
+		// Register all Jolt physics types with factory
+		JPH::RegisterTypes();
+
+		return (JPH::Factory::sInstance != nullptr);
+	}
+
+	void terminate() {
+		if (JPH::Factory::sInstance != nullptr) {
+			// Unregister all types
+			JPH::UnregisterTypes();
+
+			// Destroy factory
+			delete JPH::Factory::sInstance;
+			JPH::Factory::sInstance = nullptr;
+		}
+	}
 
 	mesh::vertex::vertex() {
 		this->Position					= math::vec<float, 3>(0.0f, 0.0f, 0.0f);

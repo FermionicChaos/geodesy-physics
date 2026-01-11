@@ -35,7 +35,19 @@
 #include <Jolt/Physics/Constraints/FixedConstraint.h>
 #include <Jolt/Physics/Constraints/PointConstraint.h>
 
+// Disable Jolt warnings for this translation unit
+JPH_SUPPRESS_WARNINGS
+
 namespace geodesy::phys {
+
+	// Initialize Jolt Physics Library
+	// Must be called before any Jolt physics operations.
+	// Returns true on success, false on failure.
+	bool initialize();
+
+	// Terminate Jolt Physics Library
+	// Cleans up all Jolt physics resources.
+	void terminate();
 
     class mesh {
 	public:
