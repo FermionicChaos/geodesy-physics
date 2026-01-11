@@ -7,6 +7,97 @@
 
 namespace geodesy::phys {
 
+	// ===== Jolt Filter Implementations ===== //
+
+	uint BroadPhaseLayerInterfaceImpl::GetNumBroadPhaseLayers() const {
+		return 3; // Static, Kinematic, Dynamic
+	}
+
+	JPH::BroadPhaseLayer BroadPhaseLayerInterfaceImpl::GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const {
+		// Direct 1:1 mapping: ObjectLayer (EMotionType value) = BroadPhaseLayer
+		// 0=Static, 1=Kinematic, 2=Dynamic
+		return JPH::BroadPhaseLayer(inLayer);
+	}
+
+#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+	const char* BroadPhaseLayerInterfaceImpl::GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const {
+		switch ((JPH::BroadPhaseLayer::Type)inLayer) {
+			case 0: return "STATIC";
+			case 1: return "KINEMATIC";
+			case 2: return "DYNAMIC";
+			default: return "INVALID";
+		}
+	}
+#endif
+
+	bool ObjectVsBroadPhaseLayerFilterImpl::ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const {
+		// Direct comparison using EMotionType values: 0=Static, 1=Kinematic, 2=Dynamic
+		
+		// Static objects only collide with kinematic and dynamic (not other static)
+		if (inLayer1 == (JPH::ObjectLayer)JPH::EMotionType::Static) {
+			return inLayer2 != JPH::BroadPhaseLayer((uint8_t)JPH::EMotionType::Static);
+		}
+		
+		// Kinematic and dynamic collide with everything
+		return true;
+	}
+
+	bool ObjectLayerPairFilterImpl::ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const {
+		// Direct comparison using EMotionType values: 0=Static, 1=Kinematic, 2=Dynamic
+		
+		// Rule: Static vs Static - never collide (optimization)
+		if (inObject1 == (JPH::ObjectLayer)JPH::EMotionType::Static && 
+		    inObject2 == (JPH::ObjectLayer)JPH::EMotionType::Static) {
+			return false;
+		}
+		
+		// All other combinations collide:
+		// - Static vs Kinematic: Collide
+		// - Static vs Dynamic: Collide
+		// - Kinematic vs Kinematic: Collide (they stop each other)
+		// - Kinematic vs Dynamic: Collide (kinematic pushes dynamic)
+		// - Dynamic vs Dynamic: Collide (rigid body dynamics)
+		return true;
+	}
+
+	// ===== Constraint Descriptor Constructor ===== //
+
+	node::constraint_descriptor::constraint_descriptor() {
+		Type = constraint_type::NONE;
+		AttachmentPoint1 = { 0.0f, 0.0f, 0.0f };
+		AttachmentPoint2 = { 0.0f, 0.0f, 0.0f };
+		PrimaryAxis1 = { 0.0f, 1.0f, 0.0f };
+		PrimaryAxis2 = { 0.0f, 1.0f, 0.0f };
+		NormalAxis1 = { 1.0f, 0.0f, 0.0f };
+		NormalAxis2 = { 1.0f, 0.0f, 0.0f };
+		LimitMin = -static_cast<float>(math::constant::pi);
+		LimitMax = static_cast<float>(math::constant::pi);
+		LimitsEnabled = false;
+		UseSoftLimits = false;
+		SpringFrequency = 2.0f;
+		SpringDamping = 0.1f;
+		MotorEnabled = false;
+		MotorTargetVelocity = 0.0f;
+		MotorTargetPosition = 0.0f;
+		MotorMaxForce = 0.0f;
+		MaxFrictionForce = 0.0f;
+		// Initialize six_dof_settings
+		for (int i = 0; i < 3; i++) {
+			SixDOF.TranslationFree[i] = false;
+			SixDOF.RotationFree[i] = false;
+			SixDOF.TranslationMin[i] = 0.0f;
+			SixDOF.TranslationMax[i] = 0.0f;
+			SixDOF.RotationMin[i] = 0.0f;
+			SixDOF.RotationMax[i] = 0.0f;
+		}
+		MinDistance = 0.0f;
+		MaxDistance = 1.0f;
+		MaxConeAngle = static_cast<float>(math::constant::pi) / 4.0f;
+		MaxTwistAngle = static_cast<float>(math::constant::pi);
+	}
+
+	// ===== Node Implementation ===== //
+
 	// Default constructor, zero out all data.
 	node::node() {
 		this->Identifier 				= "";
@@ -37,6 +128,14 @@ namespace geodesy::phys {
 			0.0f, 0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f
 		};
+		this->InverseTransformToWorld = this->TransformToWorld; // Initialize as identity
+		
+		// Initialize Jolt Physics members
+		this->JoltBodyID = JPH::BodyID();
+		this->JoltConstraint = nullptr;
+		this->Motion = JPH::EMotionType::Static; // Default motion type
+		this->CollisionEnabled = true; // Default collision enabled
+		this->PhysicsMesh = nullptr; // No physics mesh by default
 	}
 
 	node::~node() {
@@ -111,7 +210,7 @@ namespace geodesy::phys {
 		this->TransformToParentDefault = aNode->TransformToParentDefault;
 		this->TransformToParentCurrent = aNode->TransformToParentCurrent; // Copy the current transform.
 		this->TransformToWorld = aNode->TransformToWorld; // Copy the global transform.
-		this->PhysicsMeshes = aNode->PhysicsMeshes; // Copy the physics mesh if it exists.
+		this->PhysicsMesh = aNode->PhysicsMesh; // Copy the physics mesh if it exists.
 	}
 
 	void node::copy(const node* aNode) {}
@@ -183,6 +282,10 @@ namespace geodesy::phys {
 		const std::vector<phys::force>& 		aAppliedForces
 	) {
 		// Does nothing, by definition, agnostic of GPU module.
+	}
+
+	JPH::ObjectLayer node::GetObjectLayer() const {
+		return static_cast<JPH::ObjectLayer>(Motion);
 	}
 	
 }

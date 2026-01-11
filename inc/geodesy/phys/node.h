@@ -3,6 +3,7 @@
 #define GEODESY_PHYS_NODE_H
 
 #include <memory>
+#include <variant>
 
 // Include include config.
 // #include "../../config.h"
@@ -15,10 +16,61 @@
 // Include force.
 #include "force.h"
 
+// Jolt Physics Integration
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Body/BodyID.h>
+#include <Jolt/Physics/Collision/Shape/Shape.h>
+#include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
+#include <Jolt/Physics/Collision/ObjectLayer.h>
+
+namespace JPH {
+	class Constraint;
+}
+
 struct aiScene;
 struct aiNode;
 
 namespace geodesy::phys {
+
+	// ===== Jolt Physics Collision Filtering System ===== //
+	
+	/// BroadPhaseLayerInterface implementation
+	/// Maps ObjectLayer (motion type) to BroadPhaseLayer for spatial partitioning
+	/// Direct 1:1 mapping: EMotionType values (Static=0, Kinematic=1, Dynamic=2) map to BroadPhaseLayer
+	class BroadPhaseLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface {
+	public:
+		BroadPhaseLayerInterfaceImpl() = default;
+		
+		virtual uint GetNumBroadPhaseLayers() const override;
+		virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const override;
+		
+#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+		virtual const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const override;
+#endif
+	};
+	
+	/// ObjectVsBroadPhaseLayerFilter implementation
+	/// Determines if an ObjectLayer can collide with a BroadPhaseLayer during broad phase
+	class ObjectVsBroadPhaseLayerFilterImpl final : public JPH::ObjectVsBroadPhaseLayerFilter {
+	public:
+		virtual bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override;
+	};
+	
+	/// ObjectLayerPairFilter implementation
+	/// Fine-grained collision rules based on motion types
+	/// Collision rules:
+	/// - Static vs Static: No collision (optimization)
+	/// - Static vs Kinematic: Collide (kinematic bounces off walls)
+	/// - Static vs Dynamic: Collide (dynamic bounces off walls)
+	/// - Kinematic vs Kinematic: Collide (they stop each other)
+	/// - Kinematic vs Dynamic: Collide (kinematic pushes dynamic)
+	/// - Dynamic vs Dynamic: Collide (rigid body dynamics)
+	class ObjectLayerPairFilterImpl final : public JPH::ObjectLayerPairFilter {
+	public:
+		virtual bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const override;
+	};
+
+	// ===== Physics Node Class ===== //
 
 	/*
 	The goal of phys::node is that it is the base node object for a node hierarchy with transformations.
@@ -38,12 +90,6 @@ namespace geodesy::phys {
 			OBJECT,
 		};
 
-		enum motion : int {
-			STATIC,					// Node doesn't move in world space
-			KINEMATIC,				// Node either moves based on animation, scripted movement, or player control.
-			DYNAMIC,				// Node moves, but based on physical forces applied.
-		};
-
 		// Constraint types that can connect this node to its parent
 		enum constraint_type : int {
 			NONE,					// No constraint - completely free body (detached from parent hierarchy)
@@ -59,85 +105,113 @@ namespace geodesy::phys {
 
 		// Describes how this node is constrained to its parent
 		struct constraint_descriptor {
-			constraint_type Type = constraint_type::NONE;
+			constraint_type Type;
 			
 			// Attachment points (relative to each body's center of mass)
-			math::vec<float, 3> AttachmentPoint1 = { 0.0f, 0.0f, 0.0f };  // On parent
-			math::vec<float, 3> AttachmentPoint2 = { 0.0f, 0.0f, 0.0f };  // On this node
+			math::vec<float, 3> AttachmentPoint1;  // On parent
+			math::vec<float, 3> AttachmentPoint2;  // On this node
 			
 			// Axes for directional constraints (Hinge, Slider, Cone)
-			math::vec<float, 3> PrimaryAxis1 = { 0.0f, 1.0f, 0.0f };      // Parent's primary axis (hinge axis, slider direction)
-			math::vec<float, 3> PrimaryAxis2 = { 0.0f, 1.0f, 0.0f };      // Child's primary axis
-			math::vec<float, 3> NormalAxis1 = { 1.0f, 0.0f, 0.0f };       // Parent's normal axis (for angle reference)
-			math::vec<float, 3> NormalAxis2 = { 1.0f, 0.0f, 0.0f };       // Child's normal axis
+			math::vec<float, 3> PrimaryAxis1;      // Parent's primary axis (hinge axis, slider direction)
+			math::vec<float, 3> PrimaryAxis2;      // Child's primary axis
+			math::vec<float, 3> NormalAxis1;       // Parent's normal axis (for angle reference)
+			math::vec<float, 3> NormalAxis2;       // Child's normal axis
 			
 			// Limits for constrained motion
-			float LimitMin = -static_cast<float>(math::constant::pi);		// Minimum angle (rad) or distance (m)
-			float LimitMax = static_cast<float>(math::constant::pi);		// Maximum angle (rad) or distance (m)
-			bool  LimitsEnabled = false;									// Whether to enforce limits
+			float LimitMin;							// Minimum angle (rad) or distance (m)
+			float LimitMax;							// Maximum angle (rad) or distance (m)
+			bool  LimitsEnabled;					// Whether to enforce limits
 			
 			// Spring settings for soft limits
-			bool  UseSoftLimits = false;				// Use spring-based soft limits instead of hard limits
-			float SpringFrequency = 2.0f;				// Spring frequency (Hz) when limits are exceeded
-			float SpringDamping = 0.1f;					// Spring damping ratio (0 = no damping, 1 = critical damping)
+			bool  UseSoftLimits;					// Use spring-based soft limits instead of hard limits
+			float SpringFrequency;					// Spring frequency (Hz) when limits are exceeded
+			float SpringDamping;						// Spring damping ratio (0 = no damping, 1 = critical damping)
 			
 			// Motor/actuation settings
-			bool  MotorEnabled = false;					// Enable motor to drive the constraint
-			float MotorTargetVelocity = 0.0f;			// Target velocity for velocity motor (rad/s or m/s)
-			float MotorTargetPosition = 0.0f;			// Target position for position motor (rad or m)
-			float MotorMaxForce = 0.0f;					// Maximum force/torque the motor can apply (N or N·m)
+			bool  MotorEnabled;						// Enable motor to drive the constraint
+			float MotorTargetVelocity;				// Target velocity for velocity motor (rad/s or m/s)
+			float MotorTargetPosition;				// Target position for position motor (rad or m)
+			float MotorMaxForce;					// Maximum force/torque the motor can apply (N or N·m)
 			
 			// Friction
-			float MaxFrictionForce = 0.0f;				// Maximum friction force/torque when not motorized (N or N·m)
+			float MaxFrictionForce;					// Maximum friction force/torque when not motorized (N or N·m)
 			
 			// Six DOF specific settings (which axes are free/limited)
 			struct six_dof_settings {
-				bool TranslationFree[3] = { false, false, false };	// X, Y, Z translation freedom
-				bool RotationFree[3] = { false, false, false };		// X, Y, Z rotation freedom
-				float TranslationMin[3] = { 0.0f, 0.0f, 0.0f };		// Min translation limits
-				float TranslationMax[3] = { 0.0f, 0.0f, 0.0f };		// Max translation limits
-				float RotationMin[3] = { 0.0f, 0.0f, 0.0f };		// Min rotation limits (rad)
-				float RotationMax[3] = { 0.0f, 0.0f, 0.0f };		// Max rotation limits (rad)
+				bool TranslationFree[3];			// X, Y, Z translation freedom
+				bool RotationFree[3];				// X, Y, Z rotation freedom
+				float TranslationMin[3];			// Min translation limits
+				float TranslationMax[3];			// Max translation limits
+				float RotationMin[3];				// Min rotation limits (rad)
+				float RotationMax[3];				// Max rotation limits (rad)
 			};
 			six_dof_settings SixDOF;
 			
 			// Distance constraint specific
-			float MinDistance = 0.0f;					// Minimum distance to maintain
-			float MaxDistance = 1.0f;					// Maximum distance to maintain
+			float MinDistance;						// Minimum distance to maintain
+			float MaxDistance;						// Maximum distance to maintain
 			
 			// Cone constraint specific
-			float MaxConeAngle = static_cast<float>(math::constant::pi) / 4.0f;	// Maximum cone half-angle (rad)
-			float MaxTwistAngle = static_cast<float>(math::constant::pi);			// Maximum twist angle (rad)
+			float MaxConeAngle;						// Maximum cone half-angle (rad)
+			float MaxTwistAngle;					// Maximum twist angle (rad)
 			
-			constraint_descriptor() = default;
+			constraint_descriptor();
+		};
+
+		// Fixed-function primitive shapes (alternative to convex hull from PhysicsMesh)
+		struct shape_sphere {
+			float Radius;
+		};
+		struct shape_box {
+			math::vec<float, 3> HalfExtent;  // Half-width in each dimension
+		};
+		struct shape_cylinder {
+			float HalfHeight;  // Half-height along Y axis
+			float Radius;
+		};
+		struct shape_capsule {
+			float HalfHeightOfCylinder;  // Half-height of cylindrical portion
+			float Radius;
+		};
+		struct shape_convex_hull {
+			// Uses PhysicsMesh vertex data, cached in world's shape cache
 		};
 		
 		// Node traversal/hierarchy data.
-		node*                   						Root;       		// Root node in hierarchy
-		node*                   						Parent;     		// Parent node in hierarchy
-		std::vector<node*> 								Child;      		// Child nodes in hierarchy
+		node*                   						Root;       					// Root node in hierarchy
+		node*                   						Parent;     					// Parent node in hierarchy
+		std::vector<node*> 								Child;      					// Child nodes in hierarchy
 
 		// Node Data
-		std::string             						Identifier; 		// Node identifier
-		int 											Type;       		// Node type
-		int 											Motion; 			// Determines how this node moves in world space.
-		constraint_descriptor 							ParentConstraint;	// Describes how this node is constrained to its parent
-		bool 											CollisionEnabled;	// Is collision detection enabled for this node.
+		std::string             						Identifier; 					// Node identifier
+		int 											Type;       					// Node type
+		JPH::EMotionType 								Motion; 						// Determines how this node moves in world space (Static/Kinematic/Dynamic)
+		constraint_descriptor 							ParentConstraint;				// Describes how this node is constrained to its parent
+		bool 											CollisionEnabled;				// Is collision detection enabled for this node.
 
 		// Physics Data
-		math::vec<float, 3>								Position;			// Meter			[m]
-		math::quaternion<float>							Orientation;		// Quaternion		[Dimensionless]
-		math::vec<float, 3> 							Scale;				// Scaling Factor	[Dimensionless]
-		float											Mass;				// Kilogram			[kg]
-		math::mat<float, 3, 3>							InertiaTensor;		// Inertia Tensor	[kg*m^2]
-		math::vec<float, 3>								LinearMomentum;		// Linear Momentum	[kg*m/s]
-		math::vec<float, 3>								AngularMomentum;	// Angular Momentum [kg*m/s]
-		std::vector<std::shared_ptr<phys::mesh>>		PhysicsMeshes;		// Mesh Data
+		math::vec<float, 3>								Position;						// Meter			[m]
+		math::quaternion<float>							Orientation;					// Quaternion		[Dimensionless]
+		math::vec<float, 3> 							Scale;							// Scaling Factor	[Dimensionless]
+		float											Mass;							// Kilogram			[kg]
+		math::mat<float, 3, 3>							InertiaTensor;					// Inertia Tensor	[kg*m^2]
+		math::vec<float, 3>								LinearMomentum;					// Linear Momentum	[kg*m/s]
+		math::vec<float, 3>								AngularMomentum;				// Angular Momentum [kg*m/s]
+		std::shared_ptr<phys::mesh>						PhysicsMesh;					// Collision Mesh Data (one mesh per node = one Jolt body)
 		
 		// Cached Transform Data
-		math::mat<float, 4, 4> 							TransformToParentDefault; 	// Node transformation matrix
-		math::mat<float, 4, 4> 							TransformToParentCurrent;   // Final Node Transform each frame after physics and animation
-		math::mat<float, 4, 4> 							TransformToWorld;    // Node Transform to World Space.
+		math::mat<float, 4, 4> 							TransformToParentDefault; 		// Initialially loaded transform data
+		math::mat<float, 4, 4> 							TransformToParentCurrent;   	// Cached transform data based on current state
+		math::mat<float, 4, 4> 							TransformToWorld;    			// Node Transform to World Space.
+		math::mat<float, 4, 4> 							InverseTransformToWorld; 		// Cached inverse transform (World Space to Node Local Space)
+		
+		// ===== Jolt Physics Integration ===== //
+		
+		// Shape variant: either primitive or convex hull (if empty, uses PhysicsMesh)
+		std::variant<std::monostate, shape_sphere, shape_box, shape_cylinder, shape_capsule, shape_convex_hull> ShapeOverride;
+		
+		JPH::BodyID 									JoltBodyID;						// Jolt physics body ID (links node to physics simulation)
+		JPH::Constraint* 								JoltConstraint;					// Jolt constraint connecting this node to parent
 		
 		node();
 		~node();
@@ -156,6 +230,12 @@ namespace geodesy::phys {
 		std::vector<node*> linearize();
 
 		void set_root(node* aRootNode);
+
+		// ===== Jolt Physics Helper Methods ===== //
+		
+		/// Get Jolt ObjectLayer from Motion type
+		/// ObjectLayer directly encodes motion: 0=Static, 1=Kinematic, 2=Dynamic
+		JPH::ObjectLayer GetObjectLayer() const;
 
 		// Overridable node data copy function.
 		virtual void copy_data(const node* aNode);
