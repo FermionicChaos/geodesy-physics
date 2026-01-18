@@ -110,7 +110,7 @@ namespace geodesy::phys {
 		// Node Data
 		std::string             						Identifier; 					// Node identifier
 		JPH::EMotionType 								Motion; 						// Determines how this node moves in world space (Static/Kinematic/Dynamic)
-		bool 											CollisionEnabled;				// Is collision detection enabled for this node.
+		bool 											Collision;				// Is collision detection enabled for this node.
 
 		// Physics Data
 		math::vec<float, 3>								Position;						// Meter			[m]

@@ -96,7 +96,7 @@ namespace geodesy::phys {
 		// Initialize Jolt Physics members
 		this->JoltBodyID = JPH::BodyID();
 		this->Motion = JPH::EMotionType::Static; // Default motion type
-		this->CollisionEnabled = true; // Default collision enabled
+		this->Collision = true; // Default collision enabled
 		this->PhysicsMesh = nullptr; // No physics mesh by default
 	}
 
