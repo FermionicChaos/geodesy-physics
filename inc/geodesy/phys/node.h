@@ -122,6 +122,11 @@ namespace geodesy::phys {
 		math::vec<float, 3>								AngularMomentum;				// Angular Momentum [kg*m/s]
 		std::shared_ptr<phys::mesh>						PhysicsMesh;					// Collision Mesh Data (one mesh per node = one Jolt body)
 		
+		// Pending Physics Actions (applied before physics step)
+		std::vector<math::vec<float, 3>>				PendingForces;					// Forces to apply [N]
+		std::vector<math::vec<float, 3>>				PendingImpulses;				// Impulses to apply [N*s]
+		std::vector<math::vec<float, 3>>				PendingTorques;					// Torques to apply [N*m]
+		
 		// Cached Transform Data
 		math::mat<float, 4, 4> 							TransformToParentDefault; 		// Initialially loaded transform data
 		math::mat<float, 4, 4> 							TransformToParentCurrent;   	// Cached transform data based on current state
