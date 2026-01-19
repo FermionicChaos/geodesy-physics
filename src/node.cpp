@@ -301,7 +301,6 @@ namespace geodesy::phys {
 	void node::host_update(
 		double 									aDeltaTime, 
 		double 									aTime, 
-		const std::vector<force>& 				aAppliedForces,
 		const std::vector<phys::animation>& 	aPlaybackAnimation,
 		const std::vector<float>& 				aAnimationWeight
 	) {
@@ -345,8 +344,7 @@ namespace geodesy::phys {
 
 	void node::device_update(
 		double 									aDeltaTime, 
-		double 									aTime, 
-		const std::vector<phys::force>& 		aAppliedForces
+		double 									aTime
 	) {
 		// Does nothing, by definition, agnostic of GPU module.
 	}

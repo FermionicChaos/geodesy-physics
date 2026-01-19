@@ -13,8 +13,6 @@
 #include "mesh.h"
 // Include animation.
 #include "animation.h"
-// Include force.
-#include "force.h"
 
 struct aiScene;
 struct aiNode;
@@ -127,14 +125,12 @@ namespace geodesy::phys {
 		virtual void host_update(
 			double 									aDeltaTime = 0.0f, 
 			double 									aTime = 0.0f, 
-			const std::vector<phys::force>& 		aAppliedForces = {},
 			const std::vector<phys::animation>& 	aPlaybackAnimation = {},
 			const std::vector<float>& 				aAnimationWeight = {}
 		);
 		virtual void device_update(
 			double 									aDeltaTime = 0.0f, 
-			double 									aTime = 0.0f, 
-			const std::vector<phys::force>& 		aAppliedForces = {}
+			double 									aTime = 0.0f
 		);
 		
 	};
