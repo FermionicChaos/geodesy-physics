@@ -64,99 +64,71 @@ namespace geodesy::phys {
 
 	// Default constructor, zero out all data.
 	node::node() {
-		this->Identifier 				= "";
-		this->Root 				= this;
-		this->Parent 			= nullptr;
-		this->Mass 				= 1.0f; // Default mass to 1 kg.
-		this->InertiaTensor 	= {
+		this->Root = this;
+		this->Parent = nullptr;
+		// Child vector is default initialized (empty)
+		this->Identifier = "";
+		this->Motion = JPH::EMotionType::Static;
+		this->Collision = false;
+		this->Position = { 0.0f, 0.0f, 0.0f };
+		this->Orientation = { 1.0f, 0.0f, 0.0f, 0.0f }; // Identity quaternion (w, x, y, z)
+		this->Scale = { 1.0f, 1.0f, 1.0f };
+		this->Mass = 1.0f;
+		this->InertiaTensor = {
 			1.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 1.0f
 		};
-		this->Position 			= { 0.0f, 0.0f, 0.0f }; // Default position to origin.
-		this->Orientation 		= { 1.0f, 0.0f, 0.0f, 0.0f }; // Default orientation to identity quaternion.
-		this->Scale 			= { 1.0f, 1.0f, 1.0f }; // Default scale to 1 in all dimensions.
-		this->LinearMomentum 	= { 0.0f, 0.0f, 0.0f }; // Default linear momentum to zero.
-		this->AngularMomentum 	= { 0.0f, 0.0f, 0.0f }; // Default angular momentum to zero.
-		this->TransformToParentDefault 	= {
+		this->LinearMomentum = { 0.0f, 0.0f, 0.0f };
+		this->AngularMomentum = { 0.0f, 0.0f, 0.0f };
+		this->PhysicsMesh = nullptr;
+		this->JoltBodyID = JPH::BodyID();
+		// PendingForces, PendingImpulses, PendingTorques vectors are default initialized (empty)
+		this->TransformToParentDefault = {
 			1.0f, 0.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f, 0.0f,
 			0.0f, 0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f
 		};
-		this->TransformToParentCurrent = this->TransformToParentDefault;
+		this->TransformToParentCurrent = {
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		};
 		this->TransformToWorld = {
 			1.0f, 0.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f, 0.0f,
 			0.0f, 0.0f, 1.0f, 0.0f,
 			0.0f, 0.0f, 0.0f, 1.0f
 		};
-		this->InverseTransformToWorld = this->TransformToWorld; // Initialize as identity
-		
-		// Initialize Jolt Physics members
-		this->JoltBodyID = JPH::BodyID();
-		this->Motion = JPH::EMotionType::Static; // Default motion type
-		this->Collision = true; // Default collision enabled
-		this->PhysicsMesh = nullptr; // No physics mesh by default
+		this->InverseTransformToWorld = {
+			1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		};
+		this->WorldScaleCache = { 1.0f, 1.0f, 1.0f };
 	}
 
-	node::node(JPH::PhysicsSystem* aPhysicsSystem) : node() {
+	node::node(JPH::PhysicsSystem* aPhysicsSystem, std::shared_ptr<phys::mesh> aPhysicsMesh) : node() {
+		// ! I don't like this code, change later.
+		this->PhysicsMesh = aPhysicsMesh;
+		
 		// Create a Jolt Body from phys::node and phys::mesh.
-		if (aPhysicsSystem == nullptr) {
-			return; // No physics system provided, skip body creation
+		if (aPhysicsSystem == nullptr || this->PhysicsMesh == nullptr) {
+			return; // No physics system or mesh provided, skip body creation (no collision capability)
 		}
 		
-		// Create collision shape based on PhysicsMesh or use default box shape
-		JPH::ShapeSettings* ShapeSettings = nullptr;
+		// Get shape from PhysicsMesh
+		JPH::ShapeRefC Shape = nullptr;
 		
-		if (this->PhysicsMesh != nullptr) {
-			// Create shape based on mesh type
-			switch (this->PhysicsMesh->Type) {
-				case mesh::shape_type::BOX: {
-					ShapeSettings = new JPH::BoxShapeSettings(
-						JPH::Vec3(
-							this->PhysicsMesh->Parameters.Box.HalfExtentX,
-							this->PhysicsMesh->Parameters.Box.HalfExtentY,
-							this->PhysicsMesh->Parameters.Box.HalfExtentZ
-						)
-					);
-					break;
-				}
-				case mesh::shape_type::SPHERE: {
-					ShapeSettings = new JPH::SphereShapeSettings(this->PhysicsMesh->Parameters.Sphere.Radius);
-					break;
-				}
-				case mesh::shape_type::CAPSULE: {
-					ShapeSettings = new JPH::CapsuleShapeSettings(
-						this->PhysicsMesh->Parameters.Capsule.HalfHeight,
-						this->PhysicsMesh->Parameters.Capsule.Radius
-					);
-					break;
-				}
-				case mesh::shape_type::VERTEX_DATA: {
-					// Create convex hull from vertex data
-					JPH::Array<JPH::Vec3> Vertices;
-					Vertices.reserve(this->PhysicsMesh->Vertex.size());
-					for (const auto& Vert : this->PhysicsMesh->Vertex) {
-						Vertices.push_back(JPH::Vec3(Vert.Position[0], Vert.Position[1], Vert.Position[2]));
-					}
-					ShapeSettings = new JPH::ConvexHullShapeSettings(Vertices);
-					break;
-				}
-				default: {
-					// Default to box shape with unit dimensions
-					ShapeSettings = new JPH::BoxShapeSettings(JPH::Vec3(0.5f, 0.5f, 0.5f));
-					break;
-				}
-			}
+		if (this->PhysicsMesh->Shape != nullptr) {
+			// Use the shape already created in the physics mesh
+			Shape = this->PhysicsMesh->Shape;
 		} else {
-			// No mesh provided, use default box shape
-			ShapeSettings = new JPH::BoxShapeSettings(JPH::Vec3(0.5f, 0.5f, 0.5f));
+			return; // No shape available, skip body creation (no collision capability)
 		}
-		
-		// Create shape from settings
-		JPH::ShapeSettings::ShapeResult ShapeResult = ShapeSettings->Create();
-		JPH::ShapeRefC Shape = ShapeResult.Get();
 		
 		// Convert node position to Jolt format
 		JPH::RVec3 JoltPosition(this->Position[0], this->Position[1], this->Position[2]);
@@ -177,6 +149,12 @@ namespace geodesy::phys {
 			this->Motion,
 			Layer
 		);
+		
+		// Configure collision behavior based on Collision flag
+		// If Collision == false, make it a sensor (no physical collision response, but still moves)
+		if (!this->Collision) {
+			BodySettings.mIsSensor = true; // Sensor bodies don't physically collide but can still move
+		}
 		
 		// Set mass properties for dynamic bodies
 		if (this->Motion == JPH::EMotionType::Dynamic) {

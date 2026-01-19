@@ -85,6 +85,7 @@ namespace geodesy::phys {
 		math::vec<float, 3> LinearMomentum;                     // Linear momentum [kg*m/s]
 		math::vec<float, 3> AngularMomentum;                    // Angular momentum [kg*m/s]
 		std::shared_ptr<phys::mesh> PhysicsMesh;                // Collision mesh data (one mesh per node = one Jolt body)
+		JPH::BodyID JoltBodyID;                                 // Jolt physics body ID (links node to physics simulation)
 		std::vector<math::vec<float, 3>> PendingForces;         // Forces to apply [N]
 		std::vector<math::vec<float, 3>> PendingImpulses;       // Impulses to apply [N*s]
 		std::vector<math::vec<float, 3>> PendingTorques;        // Torques to apply [N*m]
@@ -93,10 +94,9 @@ namespace geodesy::phys {
 		math::mat<float, 4, 4> TransformToWorld;                // Node transform to world space
 		math::mat<float, 4, 4> InverseTransformToWorld;         // Cached inverse transform (world space to node local space)
 		math::vec<float, 3> WorldScaleCache;                    // Cached world scale from physics simulation (scratch space for Jolt sync)
-		JPH::BodyID JoltBodyID;                                 // Jolt physics body ID (links node to physics simulation)
 		
 		node();
-		node(JPH::PhysicsSystem* aPhysicsSystem);
+		node(JPH::PhysicsSystem* aPhysicsSystem, std::shared_ptr<phys::mesh> aPhysicsMesh = nullptr);
 		~node();
 
 		// Returns the count of nodes in the hierarchy starting from this node.
