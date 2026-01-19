@@ -16,17 +16,6 @@
 // Include force.
 #include "force.h"
 
-// Jolt Physics Integration
-#include <Jolt/Jolt.h>
-#include <Jolt/Physics/Body/BodyID.h>
-#include <Jolt/Physics/Collision/Shape/Shape.h>
-#include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
-#include <Jolt/Physics/Collision/ObjectLayer.h>
-
-namespace JPH {
-	class Constraint;
-}
-
 struct aiScene;
 struct aiNode;
 
@@ -83,43 +72,33 @@ namespace geodesy::phys {
 	class node {
 	public:
 		
-		// Node traversal/hierarchy data.
-		node*                   						Root;       					// Root node in hierarchy
-		node*                   						Parent;     					// Parent node in hierarchy
-		std::vector<node*> 								Child;      					// Child nodes in hierarchy
-
-		// Node Data
-		std::string             						Identifier; 					// Node identifier
-		JPH::EMotionType 								Motion; 						// Determines how this node moves in world space (Static/Kinematic/Dynamic)
-		bool 											Collision;						// Is collision detection enabled for this node.
-
-		// Physics Data
-		math::vec<float, 3>								Position;						// Meter			[m]
-		math::quaternion<float>							Orientation;					// Quaternion		[Dimensionless]
-		math::vec<float, 3> 							Scale;							// Scaling Factor	[Dimensionless]
-		float											Mass;							// Kilogram			[kg]
-		math::mat<float, 3, 3>							InertiaTensor;					// Inertia Tensor	[kg*m^2]
-		math::vec<float, 3>								LinearMomentum;					// Linear Momentum	[kg*m/s]
-		math::vec<float, 3>								AngularMomentum;				// Angular Momentum [kg*m/s]
-		std::shared_ptr<phys::mesh>						PhysicsMesh;					// Collision Mesh Data (one mesh per node = one Jolt body)
-		
-		// Pending Physics Actions (applied before physics step)
-		std::vector<math::vec<float, 3>>				PendingForces;					// Forces to apply [N]
-		std::vector<math::vec<float, 3>>				PendingImpulses;				// Impulses to apply [N*s]
-		std::vector<math::vec<float, 3>>				PendingTorques;					// Torques to apply [N*m]
-		
-		// Cached Transform Data
-		math::mat<float, 4, 4> 							TransformToParentDefault; 		// Initialially loaded transform data
-		math::mat<float, 4, 4> 							TransformToParentCurrent;   	// Cached transform data based on current state
-		math::mat<float, 4, 4> 							TransformToWorld;    			// Node Transform to World Space.
-		math::mat<float, 4, 4> 							InverseTransformToWorld; 		// Cached inverse transform (World Space to Node Local Space)
-		math::vec<float, 3> 							WorldScaleCache; 				// Cached world scale from physics simulation (scratch space for Jolt sync)
-		
-		// ===== Jolt Physics Integration ===== //
-		
-		JPH::BodyID 									JoltBodyID;						// Jolt physics body ID (links node to physics simulation)
+		// Node traversal/hierarchy data
+		node* Root;                                             // Root node in hierarchy
+		node* Parent;                                           // Parent node in hierarchy
+		std::vector<node*> Child;                               // Child nodes in hierarchy
+		std::string Identifier;                                 // Node identifier
+		JPH::EMotionType Motion;                                // Determines how this node moves in world space (Static/Kinematic/Dynamic)
+		bool Collision;                                         // Is collision detection enabled for this node
+		math::vec<float, 3> Position;                           // Position [m]
+		math::quaternion<float> Orientation;                    // Orientation quaternion [Dimensionless]
+		math::vec<float, 3> Scale;                              // Scaling factor [Dimensionless]
+		float Mass;                                             // Mass [kg]
+		math::mat<float, 3, 3> InertiaTensor;                   // Inertia tensor [kg*m^2]
+		math::vec<float, 3> LinearMomentum;                     // Linear momentum [kg*m/s]
+		math::vec<float, 3> AngularMomentum;                    // Angular momentum [kg*m/s]
+		std::shared_ptr<phys::mesh> PhysicsMesh;                // Collision mesh data (one mesh per node = one Jolt body)
+		std::vector<math::vec<float, 3>> PendingForces;         // Forces to apply [N]
+		std::vector<math::vec<float, 3>> PendingImpulses;       // Impulses to apply [N*s]
+		std::vector<math::vec<float, 3>> PendingTorques;        // Torques to apply [N*m]
+		math::mat<float, 4, 4> TransformToParentDefault;        // Initially loaded transform data
+		math::mat<float, 4, 4> TransformToParentCurrent;        // Cached transform data based on current state
+		math::mat<float, 4, 4> TransformToWorld;                // Node transform to world space
+		math::mat<float, 4, 4> InverseTransformToWorld;         // Cached inverse transform (world space to node local space)
+		math::vec<float, 3> WorldScaleCache;                    // Cached world scale from physics simulation (scratch space for Jolt sync)
+		JPH::BodyID JoltBodyID;                                 // Jolt physics body ID (links node to physics simulation)
 		
 		node();
+		node(JPH::PhysicsSystem* aPhysicsSystem);
 		~node();
 
 		// Returns the count of nodes in the hierarchy starting from this node.

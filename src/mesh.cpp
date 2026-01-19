@@ -86,12 +86,83 @@ namespace geodesy::phys {
 	}
 
 	mesh::mesh() {
-		this->Type						= shape_type::VERTEX_DATA;
-		this->Parameters				= shape_parameters();
 		this->Name						= "";
 		this->Mass						= 1.0f;
+		this->Type						= shape_type::VERTEX_DATA;
+		this->Parameters				= shape_parameters();
 		this->CenterOfMass 				= { 0.0f, 0.0f, 0.0f };
 		this->BoundingRadius			= 0.0f;
+		this->Vertex					= std::vector<vertex>();
+		this->Topology.Primitive		= primitive::TRIANGLE;
+		this->Topology.Data16			= std::vector<ushort>();
+		this->Topology.Data32			= std::vector<uint>();
+		this->ShapeSettings				= nullptr;
+		this->ShapeResult				= JPH::ShapeSettings::ShapeResult();
+		this->Shape						= nullptr;
+	}
+
+	mesh::mesh(shape_type aType, const shape_parameters& aParams) : mesh() {
+		this->Type						= aType;
+		this->Parameters				= aParams;
+		
+		// Generate Jolt shape settings based on shape type
+		switch (this->Type) {
+			case shape_type::BOX: {
+				this->ShapeSettings = new JPH::BoxShapeSettings(
+					JPH::Vec3(
+						aParams.Box.HalfExtentX,
+						aParams.Box.HalfExtentY,
+						aParams.Box.HalfExtentZ
+					)
+				);
+				break;
+			}
+			case shape_type::SPHERE: {
+				this->ShapeSettings = new JPH::SphereShapeSettings(aParams.Sphere.Radius);
+				break;
+			}
+			case shape_type::CYLINDER: {
+				// Jolt doesn't have a native cylinder shape, use capsule with zero radius as approximation
+				// or create a convex hull cylinder. For now, use capsule.
+				this->ShapeSettings = new JPH::CapsuleShapeSettings(
+					aParams.Cylinder.HalfHeight,
+					aParams.Cylinder.Radius
+				);
+				break;
+			}
+			case shape_type::CAPSULE: {
+				this->ShapeSettings = new JPH::CapsuleShapeSettings(
+					aParams.Capsule.HalfHeight,
+					aParams.Capsule.Radius
+				);
+				break;
+			}
+			case shape_type::VERTEX_DATA: {
+				// For vertex data, shape will be created later when vertices are available
+				this->ShapeSettings = nullptr;
+				break;
+			}
+			default: {
+				this->ShapeSettings = nullptr;
+				break;
+			}
+		}
+		
+		// Create shape from settings if available
+		if (this->ShapeSettings != nullptr) {
+			this->ShapeResult = this->ShapeSettings->Create();
+			if (this->ShapeResult.IsValid()) {
+				this->Shape = this->ShapeResult.Get();
+			}
+		}
+	}
+
+	mesh::~mesh() {
+		// Clean up ShapeSettings if allocated
+		if (this->ShapeSettings != nullptr) {
+			delete this->ShapeSettings;
+			this->ShapeSettings = nullptr;
+		}
 	}
 
 	mesh::lod_parameters::lod_parameters() {

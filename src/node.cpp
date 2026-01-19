@@ -100,6 +100,112 @@ namespace geodesy::phys {
 		this->PhysicsMesh = nullptr; // No physics mesh by default
 	}
 
+	node::node(JPH::PhysicsSystem* aPhysicsSystem) : node() {
+		// Create a Jolt Body from phys::node and phys::mesh.
+		if (aPhysicsSystem == nullptr) {
+			return; // No physics system provided, skip body creation
+		}
+		
+		// Create collision shape based on PhysicsMesh or use default box shape
+		JPH::ShapeSettings* ShapeSettings = nullptr;
+		
+		if (this->PhysicsMesh != nullptr) {
+			// Create shape based on mesh type
+			switch (this->PhysicsMesh->Type) {
+				case mesh::shape_type::BOX: {
+					ShapeSettings = new JPH::BoxShapeSettings(
+						JPH::Vec3(
+							this->PhysicsMesh->Parameters.Box.HalfExtentX,
+							this->PhysicsMesh->Parameters.Box.HalfExtentY,
+							this->PhysicsMesh->Parameters.Box.HalfExtentZ
+						)
+					);
+					break;
+				}
+				case mesh::shape_type::SPHERE: {
+					ShapeSettings = new JPH::SphereShapeSettings(this->PhysicsMesh->Parameters.Sphere.Radius);
+					break;
+				}
+				case mesh::shape_type::CAPSULE: {
+					ShapeSettings = new JPH::CapsuleShapeSettings(
+						this->PhysicsMesh->Parameters.Capsule.HalfHeight,
+						this->PhysicsMesh->Parameters.Capsule.Radius
+					);
+					break;
+				}
+				case mesh::shape_type::VERTEX_DATA: {
+					// Create convex hull from vertex data
+					JPH::Array<JPH::Vec3> Vertices;
+					Vertices.reserve(this->PhysicsMesh->Vertex.size());
+					for (const auto& Vert : this->PhysicsMesh->Vertex) {
+						Vertices.push_back(JPH::Vec3(Vert.Position[0], Vert.Position[1], Vert.Position[2]));
+					}
+					ShapeSettings = new JPH::ConvexHullShapeSettings(Vertices);
+					break;
+				}
+				default: {
+					// Default to box shape with unit dimensions
+					ShapeSettings = new JPH::BoxShapeSettings(JPH::Vec3(0.5f, 0.5f, 0.5f));
+					break;
+				}
+			}
+		} else {
+			// No mesh provided, use default box shape
+			ShapeSettings = new JPH::BoxShapeSettings(JPH::Vec3(0.5f, 0.5f, 0.5f));
+		}
+		
+		// Create shape from settings
+		JPH::ShapeSettings::ShapeResult ShapeResult = ShapeSettings->Create();
+		JPH::ShapeRefC Shape = ShapeResult.Get();
+		
+		// Convert node position to Jolt format
+		JPH::RVec3 JoltPosition(this->Position[0], this->Position[1], this->Position[2]);
+		
+		// Convert node orientation to Jolt format
+		// geodesy quaternion: [0]=w, [1]=x, [2]=y, [3]=z
+		// Jolt uses x,y,z,w constructor order
+		JPH::Quat JoltOrientation(this->Orientation[1], this->Orientation[2], this->Orientation[3], this->Orientation[0]);
+		
+		// Create body creation settings
+		// ObjectLayer is directly mapped from EMotionType (0=Static, 1=Kinematic, 2=Dynamic)
+		JPH::ObjectLayer Layer = static_cast<JPH::ObjectLayer>(this->Motion);
+		
+		JPH::BodyCreationSettings BodySettings(
+			Shape,
+			JoltPosition,
+			JoltOrientation,
+			this->Motion,
+			Layer
+		);
+		
+		// Set mass properties for dynamic bodies
+		if (this->Motion == JPH::EMotionType::Dynamic) {
+			JPH::MassProperties MassProps;
+			MassProps.mMass = this->Mass;
+			// Convert inertia tensor to Jolt format
+			MassProps.mInertia = JPH::Mat44(
+				JPH::Vec4(this->InertiaTensor(0, 0), this->InertiaTensor(0, 1), this->InertiaTensor(0, 2), 0.0f),
+				JPH::Vec4(this->InertiaTensor(1, 0), this->InertiaTensor(1, 1), this->InertiaTensor(1, 2), 0.0f),
+				JPH::Vec4(this->InertiaTensor(2, 0), this->InertiaTensor(2, 1), this->InertiaTensor(2, 2), 0.0f),
+				JPH::Vec4(0.0f, 0.0f, 0.0f, 1.0f)
+			);
+			BodySettings.mMassPropertiesOverride = MassProps;
+			BodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
+		}
+		
+		// Create and add body to physics system
+		JPH::BodyInterface& BodyInterface = aPhysicsSystem->GetBodyInterface();
+		JPH::Body* Body = BodyInterface.CreateBody(BodySettings);
+		
+		if (Body != nullptr) {
+			// Store body ID
+			this->JoltBodyID = Body->GetID();
+			
+			// Add body to physics system
+			BodyInterface.AddBody(this->JoltBodyID, JPH::EActivation::Activate);
+		}
+	}
+
 	node::~node() {
 		// Clear all child nodes memory.
 		for (auto& C : this->Child) {

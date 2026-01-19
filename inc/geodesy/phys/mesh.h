@@ -200,16 +200,21 @@ namespace geodesy::phys {
 		};
 		
 		// Host Memory Objects
-		std::string 					Name;
-		float 							Mass;
-		shape_type 						Type;
-		shape_parameters 				Parameters;
-		math::vec<float, 3> 			CenterOfMass;
-		float 							BoundingRadius;
-		std::vector<vertex> 			Vertex;
-		topology 						Topology;
+		std::string Name;
+		float Mass;
+		shape_type Type;
+		shape_parameters Parameters;
+		math::vec<float, 3> CenterOfMass;
+		float BoundingRadius;
+		std::vector<vertex> Vertex;
+		topology Topology;
+		JPH::ShapeSettings* ShapeSettings;
+		JPH::ShapeSettings::ShapeResult ShapeResult;
+		JPH::ShapeRefC Shape;
 
 		mesh();
+		mesh(shape_type aType, const shape_parameters& aParams); // Generate fixed shape mesh
+		~mesh();
 
 		vertex operator[](size_t aIndex) const;
 		vertex& operator[](size_t aIndex);
