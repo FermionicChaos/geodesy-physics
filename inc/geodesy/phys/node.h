@@ -132,6 +132,7 @@ namespace geodesy::phys {
 		math::mat<float, 4, 4> 							TransformToParentCurrent;   	// Cached transform data based on current state
 		math::mat<float, 4, 4> 							TransformToWorld;    			// Node Transform to World Space.
 		math::mat<float, 4, 4> 							InverseTransformToWorld; 		// Cached inverse transform (World Space to Node Local Space)
+		math::vec<float, 3> 							WorldScaleCache; 				// Cached world scale from physics simulation (scratch space for Jolt sync)
 		
 		// ===== Jolt Physics Integration ===== //
 		
@@ -163,6 +164,10 @@ namespace geodesy::phys {
 		/// Get Jolt ObjectLayer from Motion type
 		/// ObjectLayer directly encodes motion: 0=Static, 1=Kinematic, 2=Dynamic
 		JPH::ObjectLayer GetObjectLayer() const;
+
+		/// Recursively recalculate transforms for this node and all children
+		/// Syncs Jolt physics state back to node transforms (world and local)
+		void recalculate_parent_transforms_and_local_data();
 
 		// Overridable node data copy function.
 		virtual void copy_data(const node* aNode);

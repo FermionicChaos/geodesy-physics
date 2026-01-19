@@ -248,5 +248,51 @@ namespace geodesy::phys {
 	JPH::ObjectLayer node::GetObjectLayer() const {
 		return static_cast<JPH::ObjectLayer>(Motion);
 	}
+
+	void node::recalculate_parent_transforms_and_local_data() {
+		// Calculate TransformToParentCurrent from parent's world transform and this node's world transform
+		// Formula: C->TransformToParent = P->InverseTransformToWorld * C->TransformToWorld
+		// Note: This function is only called on child nodes, never on root nodes (handled in world.cpp)
+		this->TransformToParentCurrent = this->Parent->InverseTransformToWorld * this->TransformToWorld;
+		
+		// Extract local position from column 4 of TransformToParentCurrent
+		this->Position = math::vec<float, 3>(
+			this->TransformToParentCurrent(0, 3),
+			this->TransformToParentCurrent(1, 3),
+			this->TransformToParentCurrent(2, 3)
+		);
+		
+		// Extract upper 3x3 rotation matrix from TransformToParentCurrent
+		math::mat<float, 3, 3> LocalRotationMatrix;
+		for (int row = 0; row < 3; row++) {
+			for (int col = 0; col < 3; col++) {
+				LocalRotationMatrix(row, col) = this->TransformToParentCurrent(row, col);
+			}
+		}
+		
+		// Extract scale and normalize rotation matrix (decompose rotation from scale)
+		for (int col = 0; col < 3; col++) {
+			math::vec<float, 3> axis = {
+				LocalRotationMatrix(0, col),
+				LocalRotationMatrix(1, col),
+				LocalRotationMatrix(2, col)
+			};
+			// Extract scale from column length
+			this->Scale[col] = math::length(axis);
+			// Normalize axis to get pure rotation
+			axis /= this->Scale[col];
+			LocalRotationMatrix(0, col) = axis[0];
+			LocalRotationMatrix(1, col) = axis[1];
+			LocalRotationMatrix(2, col) = axis[2];
+		}
+		
+		// Convert rotation matrix to quaternion
+		this->Orientation = math::quat(LocalRotationMatrix);
+		
+		// Recursively process all children
+		for (auto& ChildNode : this->Child) {
+			ChildNode->recalculate_parent_transforms_and_local_data();
+		}
+	}
 	
 }
