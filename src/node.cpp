@@ -245,10 +245,6 @@ namespace geodesy::phys {
 		// Does nothing, by definition, agnostic of GPU module.
 	}
 
-	JPH::ObjectLayer node::GetObjectLayer() const {
-		return static_cast<JPH::ObjectLayer>(Motion);
-	}
-
 	void node::recalculate_parent_transforms_and_local_data() {
 		// Calculate TransformToParentCurrent from parent's world transform and this node's world transform
 		// Formula: C->TransformToParent = P->InverseTransformToWorld * C->TransformToWorld

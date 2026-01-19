@@ -82,25 +82,6 @@ namespace geodesy::phys {
 
 	class node {
 	public:
-
-		// Fixed-function primitive shapes (alternative to convex hull from PhysicsMesh)
-		struct shape_sphere {
-			float Radius;
-		};
-		struct shape_box {
-			math::vec<float, 3> HalfExtent;  // Half-width in each dimension
-		};
-		struct shape_cylinder {
-			float HalfHeight;  // Half-height along Y axis
-			float Radius;
-		};
-		struct shape_capsule {
-			float HalfHeightOfCylinder;  // Half-height of cylindrical portion
-			float Radius;
-		};
-		struct shape_convex_hull {
-			// Uses PhysicsMesh vertex data, cached in world's shape cache
-		};
 		
 		// Node traversal/hierarchy data.
 		node*                   						Root;       					// Root node in hierarchy
@@ -110,7 +91,7 @@ namespace geodesy::phys {
 		// Node Data
 		std::string             						Identifier; 					// Node identifier
 		JPH::EMotionType 								Motion; 						// Determines how this node moves in world space (Static/Kinematic/Dynamic)
-		bool 											Collision;				// Is collision detection enabled for this node.
+		bool 											Collision;						// Is collision detection enabled for this node.
 
 		// Physics Data
 		math::vec<float, 3>								Position;						// Meter			[m]
@@ -136,9 +117,6 @@ namespace geodesy::phys {
 		
 		// ===== Jolt Physics Integration ===== //
 		
-		// Shape variant: either primitive or convex hull (if empty, uses PhysicsMesh)
-		std::variant<std::monostate, shape_sphere, shape_box, shape_cylinder, shape_capsule, shape_convex_hull> ShapeOverride;
-		
 		JPH::BodyID 									JoltBodyID;						// Jolt physics body ID (links node to physics simulation)
 		
 		node();
@@ -158,12 +136,6 @@ namespace geodesy::phys {
 		std::vector<node*> linearize();
 
 		void set_root(node* aRootNode);
-
-		// ===== Jolt Physics Helper Methods ===== //
-		
-		/// Get Jolt ObjectLayer from Motion type
-		/// ObjectLayer directly encodes motion: 0=Static, 1=Kinematic, 2=Dynamic
-		JPH::ObjectLayer GetObjectLayer() const;
 
 		/// Recursively recalculate transforms for this node and all children
 		/// Syncs Jolt physics state back to node transforms (world and local)
